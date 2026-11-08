@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Dashboard</title>
+</head>
+<body>
+
+<div th:fragment="content">
+
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2 class="fw-bold mb-0">
+            <i class="bi bi-speedometer2 me-2 text-primary"></i>Dashboard
+        </h2>
+        <small class="text-muted">
+            Atualizado às <span id="ultima-atualizacao">--:--:--</span>
+            <span class="spinner-border spinner-border-sm ms-2" id="carregando" style="display:none"></span>
+        </small>
+    </div>
+
+    <div class="alert alert-danger" id="erro-dashboard" style="display:none"></div>
+
+    <!-- RF05: filtros -->
+    <form class="card shadow-sm mb-4" id="filtros" onsubmit="aplicarFiltros(event)">
+        <div class="card-body row g-2 align-items-end">
+            <div class="col-6 col-md-2">
+                <label class="form-label small mb-0" for="f-inicio">De</label>
+                <input type="date" id="f-inicio" class="form-control form-control-sm">
+            </div>
+            <div class="col-6 col-md-2">
+                <label class="form-label small mb-0" for="f-fim">Até</label>
+                <input type="date" id="f-fim" class="form-control form-control-sm">
+            </div>
+            <div class="col-6 col-md-2">
+                <label class="form-label small mb-0" for="f-status">Status</label>
+                <select id="f-status" class="form-select form-select-sm">
+                    <option value="">Todos</option>
+                    <option>RECEBIDO</option>
+                    <option>EM_PREPARACAO</option>
+                    <option>PRONTO</option>
+                    <option>SAIU_PARA_ENTREGA</option>
+                    <option>RETIRADO</option>
+                    <option>FINALIZADO</option>
+                    <option>CANCELADO</option>
+                </select>
+            </div>
+            <div class="col-6 col-md-3">
+                <label class="form-label small mb-0" for="f-produto">Produto</label>
+                <select id="f-produto" class="form-select form-select-sm">
+                    <option value="">Todos</option>
+                    <option th:each="p : ${produtos}" th:value="${p.id}" th:text="${p.nome}"></option>
+                </select>
+            </div>
+            <div class="col-6 col-md-1">
+                <label class="form-label small mb-0" for="f-agrupamento">Agrupar</label>
+                <select id="f-agrupamento" class="form-select form-select-sm">
+                    <option value="DIA">Dia</option>
+                    <option value="MES">Mês</option>
+                </select>
+            </div>
+            <div class="col-6 col-md-2 d-flex gap-1">
+                <button type="submit" class="btn btn-primary btn-sm flex-fill">Filtrar</button>
+                <button type="button" class="btn btn-outline-secondary btn-sm" onclick="limparFiltros()">Limpar</button>
+            </div>
+        </div>
+    </form>
+
+    <!-- RF01: indicadores -->
+    <div class="row g-3 mb-4">
+        <div class="col-6 col-lg-3">
+            <div class="card shadow-sm h-100"><div class="card-body">
+                <div class="text-muted small">Faturamento</div>
+                <div class="fs-4 fw-bold" id="k-faturamento">—</div>
+            </div></div>
+        </div>
+        <div class="col-6 col-lg-3">
+            <div class="card shadow-sm h-100"><div class="card-body">
+                <div class="text-muted small">Pedidos (válidos)</div>
+                <div class="fs-4 fw-bold" id="k-pedidos">—</div>
+                <div class="small text-muted"><span id="k-cancelados">0</span> cancelado(s)</div>
+            </div></div>
+        </div>
+        <div class="col-6 col-lg-3">
+            <div class="card shadow-sm h-100"><div class="card-body">
+                <div class="text-muted small">Ticket médio</div>
+                <div class="fs-4 fw-bold" id="k-ticket">—</div>
+            </div></div>
+        </div>
+        <div class="col-6 col-lg-3">
+            <div class="card shadow-sm h-100"><div class="card-body">
+                <div class="text-muted small">Itens vendidos</div>
+                <div class="fs-4 fw-bold" id="k-itens">—</div>
+                <div class="small text-muted">Descontos: <span id="k-descontos">—</span></div>
+            </div></div>
+        </div>
+    </div>
+
+    <!-- RF02 e RF03: gráficos -->
+    <div class="row g-3 mb-4">
+        <div class="col-lg-8">
+            <div class="card shadow-sm h-100"><div class="card-body">
+                <h6 class="fw-bold">Vendas no período</h6>
+                <div style="position:relative;height:280px"><canvas id="grafico-vendas"></canvas></div>
+                <div class="text-muted small text-center py-5" id="vazio-vendas" style="display:none">Sem vendas no período.</div>
+            </div></div>
+        </div>
+        <div class="col-lg-4">
+            <div class="card shadow-sm h-100"><div class="card-body">
+                <h6 class="fw-bold">Situação dos pedidos</h6>
+                <div style="position:relative;height:280px"><canvas id="grafico-status"></canvas></div>
+            </div></div>
+        </div>
+    </div>
+
+    <!-- RF04 e lista de pedidos -->
+    <div class="row g-3">
+        <div class="col-lg-6">
+            <div class="card shadow-sm h-100"><div class="card-body">
+                <h6 class="fw-bold">Produtos mais vendidos</h6>
+                <div style="position:relative;height:240px"><canvas id="grafico-produtos"></canvas></div>
+                <table class="table table-sm mt-3 mb-0">
+                    <thead><tr><th>#</th><th>Produto</th><th class="text-end">Qtd.</th><th class="text-end">Faturamento</th></tr></thead>
+                    <tbody id="tabela-produtos"></tbody>
+                </table>
+            </div></div>
+        </div>
+        <div class="col-lg-6">
+            <div class="card shadow-sm h-100"><div class="card-body">
+                <h6 class="fw-bold">Pedidos recentes</h6>
+                <table class="table table-sm mb-0">
+                    <thead><tr><th>Entrada</th><th>Cliente</th><th>Status</th><th class="text-end">Total</th></tr></thead>
+                    <tbody id="tabela-pedidos"></tbody>
+                </table>
+            </div></div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script>
+        // ---------- Utilitários ----------
+        const moeda = v => 'R$ ' + Number(v || 0).toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+        const dataHora = iso => new Date(iso).toLocaleString('pt-BR', {dateStyle: 'short', timeStyle: 'short'});
+        const escapar = t => String(t ?? '').replace(/[&<>"']/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]));
+        const graficos = {};
+
+        // Monta a query string com os filtros preenchidos
+        function filtros(extra) {
+            const params = new URLSearchParams();
+            const mapa = {inicio: 'f-inicio', fim: 'f-fim', status: 'f-status', produtoId: 'f-produto'};
+            Object.entries(mapa).forEach(([nome, id]) => {
+                const valor = document.getElementById(id).value;
+                if (valor) params.set(nome, valor);
+            });
+            Object.entries(extra || {}).forEach(([k, v]) => params.set(k, v));
+            return params.toString();
+        }
+
+        // RF06/RF07: chamada à API com tratamento de erro (mensagem do servidor, sessão expirada, sem permissão)
+        async function api(caminho, extra) {
+            const resposta = await fetch('/api/dashboard/' + caminho + '?' + filtros(extra), {
+                headers: {'Accept': 'application/json'},
+                redirect: 'manual'
+            });
+            if (resposta.type === 'opaqueredirect') {
+                throw new Error('Sua sessão expirou. Entre novamente.');
+            }
+            if (resposta.status === 403) {
+                throw new Error('Você não tem permissão para ver o dashboard.');
+            }
+            if (!resposta.ok) {
+                let mensagem = 'Erro ao consultar a API (código ' + resposta.status + ').';
+                try { mensagem = (await resposta.json()).erro || mensagem; } catch (e) { /* sem JSON */ }
+                throw new Error(mensagem);
+            }
+            return resposta.json();
+        }
+
+        function desenhar(id, config) {
+            if (graficos[id]) graficos[id].destroy();
+            graficos[id] = new Chart(document.getElementById(id), config);
+        }
+
+        // ---------- Carregamento ----------
+        async function carregar() {
+            const erro = document.getElementById('erro-dashboard');
+            const spinner = document.getElementById('carregando');
+            spinner.style.display = 'inline-block';
+            erro.style.display = 'none';
+            try {
+                // O filtro de agrupamento só vale para o gráfico de vendas
+                const agrupamento = document.getElementById('f-agrupamento').value;
+                const [resumo, vendas, status, ranking, recentes] = await Promise.all([
+                    api('resumo'),
+                    api('vendas-por-periodo', {agrupamento}),
+                    api('pedidos-por-status'),
+                    api('produtos-mais-vendidos', {limite: 5}),
+                    api('pedidos-recentes', {limite: 8})
+                ]);
+                mostrarResumo(resumo);
+                mostrarVendas(vendas);
+                mostrarStatus(status);
+                mostrarRanking(ranking);
+                mostrarRecentes(recentes);
+                document.getElementById('ultima-atualizacao').textContent = new Date().toLocaleTimeString('pt-BR');
+            } catch (e) {
+                erro.textContent = e.message;
+                erro.style.display = 'block';
+            } finally {
+                spinner.style.display = 'none';
+            }
+        }
+
+        function mostrarResumo(r) {
+            document.getElementById('k-faturamento').textContent = moeda(r.faturamentoTotal);
+            document.getElementById('k-pedidos').textContent = r.pedidosValidos;
+            document.getElementById('k-cancelados').textContent = r.pedidosCancelados;
+            document.getElementById('k-ticket').textContent = moeda(r.ticketMedio);
+            document.getElementById('k-itens').textContent = r.itensVendidos;
+            document.getElementById('k-descontos').textContent = moeda(r.descontosConcedidos);
+            // Mostra o período realmente usado (o servidor aplica 30 dias quando nada é informado)
+            if (!document.getElementById('f-inicio').value) document.getElementById('f-inicio').value = r.inicio;
+            if (!document.getElementById('f-fim').value) document.getElementById('f-fim').value = r.fim;
+        }
+
+        function mostrarVendas(pontos) {
+            const semVendas = pontos.every(p => p.pedidos === 0);
+            document.getElementById('vazio-vendas').style.display = semVendas ? 'block' : 'none';
+            document.getElementById('grafico-vendas').parentElement.style.display = semVendas ? 'none' : 'block';
+            if (semVendas) return;
+            desenhar('grafico-vendas', {
+                type: 'line',
+                data: {
+                    labels: pontos.map(p => p.periodo),
+                    datasets: [{label: 'Faturamento (R$)', data: pontos.map(p => p.faturamento),
+                        borderColor: '#0d6efd', backgroundColor: 'rgba(13,110,253,.15)', fill: true, tension: .25}]
+                },
+                options: {responsive: true, maintainAspectRatio: false,
+                    plugins: {tooltip: {callbacks: {afterLabel: ctx => pontos[ctx.dataIndex].pedidos + ' pedido(s)'}}}}
+            });
+        }
+
+        function mostrarStatus(lista) {
+            const comDados = lista.filter(s => s.quantidade > 0);
+            desenhar('grafico-status', {
+                type: 'doughnut',
+                data: {
+                    labels: comDados.map(s => s.status),
+                    datasets: [{data: comDados.map(s => s.quantidade),
+                        backgroundColor: ['#6c757d', '#ffc107', '#0dcaf0', '#0d6efd', '#6610f2', '#198754', '#dc3545']}]
+                },
+                options: {responsive: true, maintainAspectRatio: false}
+            });
+        }
+
+        function mostrarRanking(lista) {
+            desenhar('grafico-produtos', {
+                type: 'bar',
+                data: {labels: lista.map(p => p.nome),
+                    datasets: [{label: 'Quantidade vendida', data: lista.map(p => p.quantidadeVendida), backgroundColor: '#fd7e14'}]},
+                options: {indexAxis: 'y', responsive: true, maintainAspectRatio: false}
+            });
+            const corpo = document.getElementById('tabela-produtos');
+            corpo.innerHTML = lista.length === 0
+                ? '<tr><td colspan="4" class="text-center text-muted">Sem vendas no período.</td></tr>'
+                : lista.map((p, i) => `<tr><td>${i + 1}</td><td>${escapar(p.nome)}</td>
+                    <td class="text-end">${p.quantidadeVendida}</td><td class="text-end">${moeda(p.faturamento)}</td></tr>`).join('');
+        }
+
+        function mostrarRecentes(lista) {
+            const corpo = document.getElementById('tabela-pedidos');
+            corpo.innerHTML = lista.length === 0
+                ? '<tr><td colspan="4" class="text-center text-muted">Nenhum pedido no período.</td></tr>'
+                : lista.map(p => `<tr><td>${dataHora(p.dataEntrada)}</td><td>${escapar(p.cliente)}</td>
+                    <td><span class="badge bg-secondary">${escapar(p.status)}</span></td>
+                    <td class="text-end">${moeda(p.valorTotal)}</td></tr>`).join('');
+        }
+
+        // ---------- Filtros e atualização automática ----------
+        function aplicarFiltros(evento) { evento.preventDefault(); carregar(); }
+
+        function limparFiltros() {
+            ['f-inicio', 'f-fim', 'f-status', 'f-produto'].forEach(id => document.getElementById(id).value = '');
+            document.getElementById('f-agrupamento').value = 'DIA';
+            carregar();
+        }
+
+        carregar();
+        setInterval(carregar, 60000); // atualiza sozinho a cada 60 segundos
+    </script>
+</div>
+
+</body>
+</html>
