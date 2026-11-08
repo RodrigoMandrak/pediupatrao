@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Novo Pedido</title>
+</head>
+<body>
+
+<div th:fragment="content">
+
+    <div class="d-flex align-items-center gap-3 mb-4">
+        <a href="/pedidos" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left"></i></a>
+        <h2 class="fw-bold mb-0">Novo Pedido</h2>
+    </div>
+
+    <div class="alert alert-danger" th:if="${erro}" th:text="${erro}"></div>
+
+    <div class="card shadow-sm" style="max-width: 640px;">
+        <div class="card-body p-4">
+            <form th:action="@{/pedidos/salvar}" method="post">
+
+                <div class="mb-3">
+                    <label for="clienteId" class="form-label fw-medium">Cliente</label>
+                    <select id="clienteId" name="clienteId" class="form-select" required>
+                        <option value="" disabled selected>Selecione o cliente</option>
+                        <option th:each="c : ${clientes}" th:value="${c.id}" th:text="${c.nome}"></option>
+                    </select>
+                </div>
+
+                <label class="form-label fw-medium">Itens</label>
+                <div id="itens">
+                    <div class="row g-2 mb-2 item-linha">
+                        <div class="col-8">
+                            <select name="produtoId" class="form-select" required>
+                                <option value="" disabled selected>Selecione o produto</option>
+                                <option th:each="p : ${produtos}"
+                                        th:if="${p.ativo != false}"
+                                        th:value="${p.id}"
+                                        th:text="${p.nome + ' - R$ ' + #numbers.formatDecimal(p.preco, 1, 'POINT', 2, 'COMMA')}"></option>
+                            </select>
+                        </div>
+                        <div class="col-4">
+                            <input type="number" name="quantidade" class="form-control" min="1" value="1" required>
+                        </div>
+                    </div>
+                </div>
+
+                <button type="button" class="btn btn-sm btn-outline-secondary mb-4" onclick="adicionarItem()">
+                    <i class="bi bi-plus"></i> Adicionar item
+                </button>
+
+                <p class="text-muted small">O valor total é calculado pelo sistema.</p>
+
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-primary">Registrar pedido</button>
+                    <a href="/pedidos" class="btn btn-outline-secondary">Cancelar</a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // Copia a primeira linha de item para criar outra
+        function adicionarItem() {
+            const container = document.getElementById('itens');
+            const nova = container.querySelector('.item-linha').cloneNode(true);
+            nova.querySelector('select').selectedIndex = 0;
+            nova.querySelector('input').value = 1;
+            container.appendChild(nova);
+        }
+    </script>
+</div>
+
+</body>
+</html>
