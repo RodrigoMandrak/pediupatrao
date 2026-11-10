@@ -10,6 +10,10 @@ Este repositório reúne a evolução do sistema:
 
 ## Vídeo de demonstração
 
+https://github.com/user-attachments/assets/d325a0df-fe2d-4f1b-80ed-6f97b0d51b2e
+
+
+
 [Assistir ao vídeo (2 min 30)](docs/video/videopediupatrao.mp4)
 
 ## Documentação
