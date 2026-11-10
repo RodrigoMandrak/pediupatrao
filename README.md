@@ -9,7 +9,8 @@ Este repositório reúne a evolução do sistema:
 - **Dashboard Administrativo** com uma API própria (atividade M2).
 
 ## Vídeo de demonstração
-[Assistir ao vídeo (até 3 min)](video em produção ainda)
+
+[Assistir ao vídeo (2 min 30)](docs/video/videopediupatrao.mp4)
 
 ## Documentação
 - [Requisitos, endpoints e evidências de testes](docs/DOCUMENTACAO_DASHBOARD.md)
